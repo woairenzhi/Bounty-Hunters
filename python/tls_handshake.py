@@ -233,8 +233,8 @@ class TLSHandshake:
             12,
         )
 
-        # BUG 3: uses == instead of hmac.compare_digest(), enabling timing attacks
-        return computed_verify == received_verify
+        # fixed: use hmac.compare_digest() to prevent timing attacks
+        return hmac.compare_digest(computed_verify, received_verify)
 
     def process_key_exchange(self, message: HandshakeMessage) -> bool:
         """Process a ClientKeyExchange or ServerKeyExchange message."""
@@ -256,8 +256,8 @@ class TLSHandshake:
             self._derive_master_secret()
             return True
 
-        # BUG 4: bare except with pass silently swallows all errors
-        except:
+        # fixed: catch only expected exceptions, let unexpected ones propagate
+        except (ValueError, struct.error):
             pass
         return False
 
@@ -271,9 +271,8 @@ class TLSHandshake:
         seed = self.client_random + self.server_random
 
         if self.negotiated_ems:
-            # BUG 5: should use "extended master secret" label per RFC 7627,
-            # but incorrectly uses the standard "master secret" label
-            label = b"master secret"
+            # fixed: use "extended master secret" label per RFC 7627
+            label = b"extended master secret"
         else:
             label = b"master secret"
 
